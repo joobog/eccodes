@@ -57,7 +57,7 @@ grib_iarray* grib_iarray_new(grib_context* c, size_t size, size_t incsize)
     v = (grib_iarray*)grib_context_malloc(c, sizeof(grib_iarray));
     if (!v) {
         grib_context_log(c, GRIB_LOG_ERROR,
-                         "grib_iarray_new unable to allocate %ld bytes\n", sizeof(grib_iarray));
+                         "grib_iarray_new unable to allocate %lu bytes\n", sizeof(grib_iarray));
         return NULL;
     }
     v->context             = c;
@@ -68,7 +68,7 @@ grib_iarray* grib_iarray_new(grib_context* c, size_t size, size_t incsize)
     v->number_of_pop_front = 0;
     if (!v->v) {
         grib_context_log(c, GRIB_LOG_ERROR,
-                         "grib_iarray_new unable to allocate %ld bytes\n", sizeof(long) * size);
+                         "grib_iarray_new unable to allocate %lu bytes\n", sizeof(long) * size);
         return NULL;
     }
     return v;
@@ -109,7 +109,7 @@ static grib_iarray* grib_iarray_resize_to(grib_iarray* v, size_t newsize)
     newv = (long*)grib_context_malloc_clear(c, newsize * sizeof(long));
     if (!newv) {
         grib_context_log(c, GRIB_LOG_ERROR,
-                         "grib_iarray_resize unable to allocate %ld bytes\n", sizeof(long) * newsize);
+                         "grib_iarray_resize unable to allocate %lu bytes\n", sizeof(long) * newsize);
         return NULL;
     }
 
@@ -152,7 +152,7 @@ grib_iarray* grib_iarray_push_front(grib_iarray* v, long val)
 {
     size_t start_size    = 100;
     size_t start_incsize = 100;
-    int i;
+    size_t i;
     if (!v)
         v = grib_iarray_new(0, start_size, start_incsize);
 

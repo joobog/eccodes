@@ -10,6 +10,7 @@
 
 #include "grib_api_internal.h"
 #include <ctype.h>
+
 /*
    This is used by make_class.pl
 
@@ -145,20 +146,20 @@ static char* lval_to_string(grib_context* c, long v)
 {
     char* sval = (char*)grib_context_malloc_clear(c, sizeof(char) * 40);
     if (v == GRIB_MISSING_LONG)
-        sprintf(sval, "CODES_MISSING_LONG");
+        snprintf(sval, 1024, "CODES_MISSING_LONG");
     else
-        sprintf(sval, "%ld", v);
+        snprintf(sval, 1024, "%ld", v);
     return sval;
 }
 static char* dval_to_string(grib_context* c, double v)
 {
     char* sval = (char*)grib_context_malloc_clear(c, sizeof(char) * 40);
     if (v == GRIB_MISSING_DOUBLE) {
-        sprintf(sval, "CODES_MISSING_DOUBLE");
+        snprintf(sval, 1024, "CODES_MISSING_DOUBLE");
     }
     else {
         char* p;
-        sprintf(sval, "%.18e", v);
+        snprintf(sval, 1024, "%.18e", v);
         p = sval;
         while (*p != 0) {
             if (*p == 'e')
@@ -176,6 +177,7 @@ static char* break_line(grib_context* c, const char* input)
 {
     /* Break a long line using Fortran continuation characters */
     char* a_token    = NULL;
+    char* lasts      = NULL;
     int first        = 1;
     const size_t len = strlen(input);
     /* Add a bit more for inserted newlines and continuation characters */
@@ -191,7 +193,7 @@ static char* break_line(grib_context* c, const char* input)
     /* 'hello &
      * &world'  is the same as 'hello world'
      */
-    a_token = strtok((char*)input, "->");
+    a_token = strtok_r((char*)input, "->", &lasts);
     while (a_token) {
         if (first) {
             first = 0;
@@ -199,10 +201,10 @@ static char* break_line(grib_context* c, const char* input)
         }
         else {
             char tmp[256] = {0,};
-            sprintf(tmp, "->&\n    &%s", a_token);
+            snprintf(tmp, sizeof(tmp), "->&\n    &%s", a_token);
             strcat(result, tmp);
         }
-        a_token = strtok(NULL, "->");
+        a_token = strtok_r(NULL, "->", &lasts);
     }
 
     return result;
@@ -289,7 +291,7 @@ static void dump_values(grib_dumper* d, grib_accessor* a)
         if (r != 0) {
             prefix = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(a->name) + 10));
             dofree = 1;
-            sprintf(prefix, "#%d#%s", r, a->name);
+            snprintf(prefix, 1024, "#%d#%s", r, a->name);
         }
         else
             prefix = (char*)a->name;
@@ -373,7 +375,7 @@ static void dump_values_attribute(grib_dumper* d, grib_accessor* a, const char* 
         char* prefix1;
 
         prefix1 = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(a->name) + strlen(prefix) + 5));
-        sprintf(prefix1, "%s->%s", prefix, a->name);
+        snprintf(prefix1, 1024, "%s->%s", prefix, a->name);
 
         dump_attributes(d, a, prefix1);
 
@@ -424,7 +426,7 @@ static void dump_long(grib_dumper* d, grib_accessor* a, const char* comment)
             if (r != 0) {
                 prefix = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(a->name) + 10));
                 dofree = 1;
-                sprintf(prefix, "#%d#%s", r, a->name);
+                snprintf(prefix, 1024, "#%d#%s", r, a->name);
             }
             else
                 prefix = (char*)a->name;
@@ -511,7 +513,7 @@ static void dump_long(grib_dumper* d, grib_accessor* a, const char* comment)
         if (r != 0) {
             prefix = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(a->name) + 10));
             dofree = 1;
-            sprintf(prefix, "#%d#%s", r, a->name);
+            snprintf(prefix, 1024, "#%d#%s", r, a->name);
         }
         else
             prefix = (char*)a->name;
@@ -594,7 +596,7 @@ static void dump_long_attribute(grib_dumper* d, grib_accessor* a, const char* pr
         char* prefix1;
 
         prefix1 = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(a->name) + strlen(pref) + 5));
-        sprintf(prefix1, "%s->%s", pref, a->name);
+        snprintf(prefix1, 1024, "%s->%s", pref, a->name);
 
         dump_attributes(d, a, prefix1);
 
@@ -641,7 +643,7 @@ static void dump_double(grib_dumper* d, grib_accessor* a, const char* comment)
         if (r != 0) {
             prefix = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(a->name) + 10));
             dofree = 1;
-            sprintf(prefix, "#%d#%s", r, a->name);
+            snprintf(prefix, 1024, "#%d#%s", r, a->name);
         }
         else
             prefix = (char*)a->name;
@@ -706,7 +708,7 @@ static void dump_string_array(grib_dumper* d, grib_accessor* a, const char* comm
         if (r != 0) {
             prefix = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(a->name) + 10));
             dofree = 1;
-            sprintf(prefix, "#%d#%s", r, a->name);
+            snprintf(prefix, 1024, "#%d#%s", r, a->name);
         }
         else
             prefix = (char*)a->name;
@@ -778,7 +780,7 @@ static void dump_string(grib_dumper* d, grib_accessor* a, const char* comment)
         if (r != 0) {
             prefix = (char*)grib_context_malloc_clear(c, sizeof(char) * (strlen(acc_name) + 10));
             dofree = 1;
-            sprintf(prefix, "#%d#%s", r, acc_name);
+            snprintf(prefix, 1024, "#%d#%s", r, acc_name);
         }
         else
             prefix = (char*)acc_name;
@@ -911,12 +913,12 @@ static void header(grib_dumper* d, grib_handle* h)
     if (localSectionPresent && bufrHeaderCentre == 98) {
         grib_get_long(h, "isSatellite", &isSatellite);
         if (isSatellite)
-            sprintf(sampleName, "BUFR%ld_local_satellite", edition);
+            snprintf(sampleName, sizeof(sampleName), "BUFR%ld_local_satellite", edition);
         else
-            sprintf(sampleName, "BUFR%ld_local", edition);
+            snprintf(sampleName, sizeof(sampleName), "BUFR%ld_local", edition);
     }
     else {
-        sprintf(sampleName, "BUFR%ld", edition);
+        snprintf(sampleName, sizeof(sampleName), "BUFR%ld", edition);
     }
 
     if (d->count < 2) {
