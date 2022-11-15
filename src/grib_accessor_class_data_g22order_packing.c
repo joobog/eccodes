@@ -687,6 +687,17 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
         }
     }
 
+    // ECC-1472: Complex packing: Incorrect missing values handling
+    {
+        long bitmap_present = 0;
+        if ((err = grib_get_long_internal(gh, "bitmapPresent", &bitmap_present)) != GRIB_SUCCESS)
+            return err;
+        if (bitmap_present != 1) {
+            if ((err = grib_set_long_internal(gh, "bitmapPresent", 1)) != GRIB_SUCCESS)
+                return err;
+        }
+    }
+
     grib_context_free(a->context, sec_val);
     return err;
 }
