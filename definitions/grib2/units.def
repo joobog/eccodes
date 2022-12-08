@@ -205,7 +205,7 @@
 	 parameterCategory = 1 ;
 	 parameterNumber = 64 ;
 	}
-#Surface solar radiation downwards
+#Surface short-wave radiation downwards
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 4 ;
@@ -213,7 +213,7 @@
 	 typeOfFirstFixedSurface = 1 ;
 	 typeOfStatisticalProcessing = 1 ;
 	}
-#Surface thermal radiation downwards
+#Surface long-wave radiation downwards
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 5 ;
@@ -221,7 +221,7 @@
 	 typeOfFirstFixedSurface = 1 ;
 	 typeOfStatisticalProcessing = 1 ;
 	}
-#Top net solar radiation
+#Top net short-wave radiation
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 4 ;
@@ -247,7 +247,7 @@
 	 parameterCategory = 14 ;
 	 parameterNumber = 1 ;
 	}
-#Surface net solar radiation, clear sky
+#Surface net short-wave radiation, clear sky
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 4 ;
@@ -255,7 +255,7 @@
 	 typeOfFirstFixedSurface = 1 ;
 	 typeOfStatisticalProcessing = 1 ;
 	}
-#Surface net thermal radiation, clear sky
+#Surface net long-wave radiation, clear sky
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 5 ;
@@ -1848,6 +1848,15 @@
 	 typeOfStatisticalProcessing = 2 ;
 	 lengthOfTimeRange = 3 ;
 	}
+#Instantaneous 10 metre wind gust
+'m s**-1' = {
+	 discipline = 0 ;
+	 parameterCategory = 2 ;
+	 parameterNumber = 22 ;
+	 typeOfFirstFixedSurface = 103 ;
+	 scaledValueOfFirstFixedSurface = 10 ;
+	 scaleFactorOfFirstFixedSurface = 0 ;
+	}
 #Relative humidity with respect to water
 '%' = {
 	 discipline = 0 ;
@@ -2099,6 +2108,20 @@
 	 discipline = 2 ;
 	 parameterCategory = 0 ;
 	 parameterNumber = 33 ;
+	}
+#Convective rain rate
+'kg m**-2 s**-1' = {
+	 discipline = 0 ;
+	 parameterCategory = 1 ;
+	 parameterNumber = 76 ;
+	 typeOfFirstFixedSurface = 1 ;
+	}
+#Large scale rain rate
+'kg m**-2 s**-1' = {
+	 discipline = 0 ;
+	 parameterCategory = 1 ;
+	 parameterNumber = 77 ;
+	 typeOfFirstFixedSurface = 1 ;
 	}
 #Mixed-layer CAPE in the lowest 50 hPa
 'J kg**-1' = {
@@ -3052,43 +3075,43 @@
 	 parameterCategory = 0 ;
 	 parameterNumber = 9 ;
 	}
-#Forest fire weather index
+#Forest fire weather index (as defined by the Canadian Forest Service)
 'Numeric' = {
 	 discipline = 2 ;
 	 parameterCategory = 4 ;
 	 parameterNumber = 5 ;
 	}
-#Fine fuel moisture code
+#Fine fuel moisture code (as defined by the Canadian Forest Service)
 'Numeric' = {
 	 discipline = 2 ;
 	 parameterCategory = 4 ;
 	 parameterNumber = 6 ;
 	}
-#Duff moisture code
+#Duff moisture code (as defined by the Canadian Forest Service)
 'Numeric' = {
 	 discipline = 2 ;
 	 parameterCategory = 4 ;
 	 parameterNumber = 7 ;
 	}
-#Drought code
+#Drought code (as defined by the Canadian Forest Service)
 'Numeric' = {
 	 discipline = 2 ;
 	 parameterCategory = 4 ;
 	 parameterNumber = 8 ;
 	}
-#Initial fire spread index
+#Initial fire spread index (as defined by the Canadian Forest Service)
 'Numeric' = {
 	 discipline = 2 ;
 	 parameterCategory = 4 ;
 	 parameterNumber = 9 ;
 	}
-#Fire buildup index
+#Fire buildup index (as defined by the Canadian Forest Service)
 'Numeric' = {
 	 discipline = 2 ;
 	 parameterCategory = 4 ;
 	 parameterNumber = 10 ;
 	}
-#Fire daily severity rating
+#Fire daily severity rating (as defined by the Canadian Forest Service)
 'Numeric' = {
 	 discipline = 2 ;
 	 parameterCategory = 4 ;
@@ -5090,7 +5113,7 @@
 	 parameterCategory = 0 ;
 	 parameterNumber = 1 ;
 	}
-#Surface net solar radiation
+#Surface net short-wave radiation
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 4 ;
@@ -5098,7 +5121,7 @@
 	 typeOfFirstFixedSurface = 1 ;
 	 typeOfStatisticalProcessing = 1 ;
 	}
-#Surface net thermal radiation
+#Surface net long-wave radiation
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 5 ;
@@ -5106,7 +5129,7 @@
 	 typeOfFirstFixedSurface = 1 ;
 	 typeOfStatisticalProcessing = 1 ;
 	}
-#Top net thermal radiation
+#Top net long-wave radiation
 'J m**-2' = {
 	 discipline = 0 ;
 	 parameterCategory = 5 ;
