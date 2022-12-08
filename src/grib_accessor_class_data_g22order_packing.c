@@ -22,36 +22,6 @@
 #define DEFINED_VAL(x) ((x) < UNDEFINED_LOW || (x) > UNDEFINED_HIGH)
 #define UNDEFINED_ANGLE 999.0
 
-static void fatal_error_ii(const char* fmt, const int i, const int j)
-{
-    fprintf(stderr, "\n*** FATAL ERROR: ");
-    fprintf(stderr, fmt, i, j);
-    fprintf(stderr, " ***\n\n");
-    /*#ifndef SIMPLE_FATAL*/
-    /*err_bin(1); err_string(1);*/
-/*#endif*/
-#ifdef CALLABLE_WGRIB2
-    longjmp(fatal_err, 1);
-#endif
-    exit(8);
-    return;
-}
-
-void fatal_error_i(const char* fmt, const int i)
-{
-    fprintf(stderr, "\n*** FATAL ERROR: ");
-    fprintf(stderr, fmt, i);
-    fprintf(stderr, " ***\n\n");
-    /*#ifndef SIMPLE_FATAL*/
-    /*err_bin(1); err_string(1);*/
-/*#endif*/
-#ifdef CALLABLE_WGRIB2
-    longjmp(fatal_err, 1);
-#endif
-    exit(8);
-    return;
-}
-
 
 static unsigned char* bitstream;
 static int rbits, reg, n_bitstream;
@@ -74,12 +44,13 @@ static void finish_bitstream(void)
 }
 
 
-static void add_many_bitstream(int* t, int n, int n_bits)
+static void add_many_bitstream(grib_accessor* a, int* t, int n, int n_bits)
 {
     unsigned int jmask, tt;
     int i;
 
-    if (n_bits > 25) fatal_error_i("add_many_bitstream: n_bits = (%d)", n_bits);
+    if (n_bits > 25) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "add_many_bitstream: n_bits = (%d)", n_bits);
     jmask = (1 << n_bits) - 1;
 
     for (i = 0; i < n; i++) {
@@ -97,15 +68,16 @@ static void add_many_bitstream(int* t, int n, int n_bits)
 }
 
 
-static void add_bitstream(int t, int n_bits)
+static void add_bitstream(grib_accessor* a, int t, int n_bits)
 {
     unsigned int jmask;
 
     if (n_bits > 16) {
-        add_bitstream(t >> 16, n_bits - 16);
+        add_bitstream(a, t >> 16, n_bits - 16);
         n_bits = 16;
     }
-    if (n_bits > 25) fatal_error_i("add_bitstream: n_bits = (%d)", n_bits);
+    if (n_bits > 25) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "add_bitstream: n_bits = (%d)", n_bits);
     jmask = (1 << n_bits) - 1;
     rbits += n_bits;
     reg = (reg << n_bits) | (t & jmask);
@@ -229,21 +201,6 @@ static int min_max_array(double* data, unsigned int n, double* min, double* max)
     return 0;
 }
 
-static void fatal_error(const char* fmt, const char* string)
-{
-    fprintf(stderr, "\n*** FATAL ERROR: ");
-    fprintf(stderr, fmt, string);
-    fprintf(stderr, " ***\n\n");
-    /*#ifndef SIMPLE_FATAL*/
-    /*    err_bin(1); err_string(1);*/
-    /*#endif*/
-    /*#ifdef CALLABLE_WGRIB2*/
-    /*    longjmp(fatal_err,1);*/
-    /*#endif*/
-    exit(8);
-    return;
-}
-
 void uint_char(unsigned int i, unsigned char* p)
 {
     p[0] = (i >> 24) & 255;
@@ -252,7 +209,7 @@ void uint_char(unsigned int i, unsigned char* p)
     p[3] = (i)&255;
 }
 
-static unsigned char* mk_bms(double* data, unsigned int* ndata)
+static unsigned char* mk_bms(grib_accessor* a, double* data, unsigned int* ndata)
 {
     int bms_size;
     unsigned char *bms, *cbits;
@@ -267,7 +224,8 @@ static unsigned char* mk_bms(double* data, unsigned int* ndata)
 
     if (i == nn) { /* all defined values, no need for bms */
         bms = (unsigned char*)malloc(6);
-        if (bms == NULL) fatal_error("mk_bms: memory allocation problem", "");
+        if (bms == NULL) 
+            grib_context_log(a->context, GRIB_LOG_ERROR, "mk_bms: memory allocation problem", "");
         uint_char(6, bms);  // length of section 6
         bms[4] = 6;         // section 6
         bms[5] = 255;       // no bitmap
@@ -276,7 +234,8 @@ static unsigned char* mk_bms(double* data, unsigned int* ndata)
 
     bms_size = 6 + (nn + 7) / 8;
     bms      = (unsigned char*)malloc(bms_size);
-    if (bms == NULL) fatal_error("mk_bms: memory allocation problem", "");
+    if (bms == NULL) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "mk_bms: memory allocation problem", "");
 
     uint_char(bms_size, bms);  // length of section 6
     bms[4] = 6;                // section 6
@@ -637,7 +596,7 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
         return err;
 
     /* Don't call grib_get_long_internal to suppress error message being output */
-    if ((err = grib_get_long_internal(gh, self->groupSplittingMethodUsed, &groupSplittingMethodUsed)) != GRIB_SUCCESS)
+    if ((err = grib_get_long(gh, self->groupSplittingMethodUsed, &groupSplittingMethodUsed)) != GRIB_SUCCESS)
         return err;
 
     if ((err = grib_get_long_internal(gh, self->missingValueManagementUsed, &missingValueManagementUsed)) != GRIB_SUCCESS)
@@ -667,6 +626,9 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
         return err;
     if ((err = grib_get_double_internal(gh, "missingValue", &missingValue)) != GRIB_SUCCESS)
         return err;
+
+    printf("Order of spatial differencing: %ld\n", orderOfSpatialDifferencing);
+    printf("Number of octets extra descriptors: %ld\n", numberOfOctetsExtraDescriptors);
 
     self->dirty = 0;
 
@@ -1375,18 +1337,17 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
         return err;
     if ((err = grib_get_long_internal(gh, self->numberOfBitsUsedForTheScaledGroupLengths, &numberOfBitsUsedForTheScaledGroupLengths)) != GRIB_SUCCESS)
         return err;
-    /*if ((err = grib_get_long_internal(gh, self->orderOfSpatialDifferencing, &orderOfSpatialDifferencing)) != GRIB_SUCCESS)*/
-        /*return err;*/
-    /*if ((err = grib_get_long_internal(gh, self->numberOfOctetsExtraDescriptors, &numberOfOctetsExtraDescriptors)) != GRIB_SUCCESS)*/
-        /*return err;*/
+    if ((err = grib_get_long_internal(gh, self->orderOfSpatialDifferencing, &orderOfSpatialDifferencing)) != GRIB_SUCCESS)
+        return err;
+    if ((err = grib_get_long_internal(gh, self->numberOfOctetsExtraDescriptors, &numberOfOctetsExtraDescriptors)) != GRIB_SUCCESS)
+        return err;
     if ((err = grib_get_long_internal(gh, "bitmapPresent", &bitmap_present)) != GRIB_SUCCESS)
         return err;
 
     max_bits = 25; // TODO
     use_scale = 1; // TODO
 
-    /*packing_mode = orderOfSpatialDifferencing;*/
-    packing_mode = 0;
+    packing_mode = orderOfSpatialDifferencing;
     use_bitmap = bitmap_present;
     wanted_bits = bits_per_value;
     data = (double*) val;
@@ -1451,21 +1412,21 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     }
 
     /* compute bitmap section */
-    if (use_bitmap == 0 || ndef == ndata) {
-        if ((err = grib_set_long_internal(gh, "bitmapPresent", 0)) != GRIB_SUCCESS)
-            return err;
-    }
-    else {
-        if ((err = grib_set_long_internal(gh, "bitmapPresent", 1)) != GRIB_SUCCESS)
-            return err;
-    }
+    /*if (use_bitmap == 0 || ndef == ndata) {*/
+    /*    if ((err = grib_set_long_internal(gh, "bitmapPresent", 0)) != GRIB_SUCCESS)*/
+    /*        return err;*/
+    /*}*/
+    /*else {*/
+    /*    if ((err = grib_set_long_internal(gh, "bitmapPresent", 1)) != GRIB_SUCCESS)*/
+    /*        return err;*/
+    /*}*/
 
     nndata    = use_bitmap ? ndef : ndata;
     has_undef = use_bitmap ? 0 : ndata != ndef;
 
     v = (int*)malloc(((size_t)nndata) * sizeof(int));
     if (min_max_array(data, ndata, &mn, &mx) != 0)
-        fatal_error("complex_pk: min max error", "");
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex_pk: min max error", "");
     min_val = (double)mn;
     max_val = (double)mx;
 
@@ -1654,7 +1615,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     list = (struct section*)malloc((size_t)nstruct * sizeof(struct section));
     if (list == NULL)
-        fatal_error("complex_grib_out: memory allocation of list failed", "");
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex_grib_out: memory allocation of list failed", "");
 
     // initialize linked list
 
@@ -1682,7 +1643,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     start.tail    = &list[0];
 
     if (nstruct != ii + 1)
-        fatal_error_ii("complex_pk, nstruct=%d wanted %d", nstruct, ii + 1);
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex_pk, nstruct=%d wanted %d", nstruct, ii + 1);
 
 #pragma omp parallel for private(k)
     for (i = 1; i < nstruct; i++) {
@@ -1711,8 +1672,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     list_backup =
         (struct section*)malloc(((size_t)nstruct) * sizeof(struct section));
     if (list_backup == NULL)
-        fatal_error("complex_grib_out: memory allocation of list_backup failed",
-                    "");
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex_grib_out: memory allocation of list_backup failed");
 
     j  = size_all(start.tail, vbits, LEN_BITS + est_group_width, has_undef);
     j0 = j + 1;
@@ -1773,7 +1733,8 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     // scale the linked list
     s = start.tail;
-    if (s == NULL) fatal_error("complex grib_out: program error 1", "");
+    if (s == NULL) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex grib_out: program error 1");
     ngroups = 0;  // number  of groups
 
     while (s) {
@@ -1789,7 +1750,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     if (lens == NULL || widths == NULL || refs == NULL || itmp == NULL ||
         itmp2 == NULL)
-        fatal_error("complex grib_out: memory allocation", "");
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex grib_out: memory allocation");
 
     /* make vectors so we can OpenMP the loop */
     for (i = ii = 0, s = start.tail; ii < ngroups; ii++, s = s->tail) {
@@ -1799,7 +1760,8 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
         itmp[ii]  = s->mx;
         itmp2[ii] = s->missing;
     }
-    if (i != nndata) fatal_error("complex grib_out: program error 2", "");
+    if (i != nndata) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex grib_out: program error 2");
 
 #pragma omp parallel for private(i)
     for (i = 0; i < ngroups; i++) {
@@ -1938,37 +1900,37 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     sec7 = (unsigned char*)malloc(size_sec7);
     if (sec7 == NULL)
-        fatal_error("complex_grib_out memory allocation sec7", "");
+        grib_context_log(a->context, GRIB_LOG_ERROR, "complex_grib_out memory allocation sec7");
 
     // pack the values into a bitstream
 
     init_bitstream(sec7);
-    add_bitstream(size_sec7 >> 16, 16);
-    add_bitstream(size_sec7, 16);
-    add_bitstream(7, 8);
+    add_bitstream(a, size_sec7 >> 16, 16);
+    add_bitstream(a, size_sec7, 16);
+    add_bitstream(a, 7, 8);
 
     // write extra octets
     if (packing_mode == 2 || packing_mode == 3) {
-        add_bitstream(extra_0, 8 * sec5_48);
-        if (packing_mode == 3) add_bitstream(extra_1, 8 * sec5_48);
+        add_bitstream(a, extra_0, 8 * sec5_48);
+        if (packing_mode == 3) add_bitstream(a, extra_1, 8 * sec5_48);
         k = vmn;
         if (k < 0) {
             k = -vmn | (1 << (8 * sec5_48 - 1));
         }
-        add_bitstream(k, 8 * sec5_48);
+        add_bitstream(a, k, 8 * sec5_48);
         finish_bitstream();
     }
 
     // write the group reference values
-    add_many_bitstream(refs, ngroups, sec5_19);
+    add_many_bitstream(a, refs, ngroups, sec5_19);
     finish_bitstream();
 
     // write the group widths
-    add_many_bitstream(itmp, ngroups, sec5_36);
+    add_many_bitstream(a, itmp, ngroups, sec5_36);
     finish_bitstream();
 
     // write the group lengths
-    add_many_bitstream(itmp2, ngroups, sec5_46);
+    add_many_bitstream(a, itmp2, ngroups, sec5_46);
     finish_bitstream();
 
     s = start.tail;
@@ -1988,7 +1950,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     }
     for (i = 0; i < ngroups; i++) {
         if (widths[i]) {
-            add_many_bitstream(v + itmp[i], lens[i], widths[i]);
+            add_many_bitstream(a, v + itmp[i], lens[i], widths[i]);
         }
     }
 
