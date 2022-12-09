@@ -1,4 +1,4 @@
-# (C) Copyright 2005- ECMWF.
+# Copyright 2005-2019 ECMWF.
 
 # TEMPLATE 5.2, Grid point data - complex packing
 
@@ -42,10 +42,3 @@ unsigned[4] trueLengthOfLastGroup ;
 # by the length increment given in octet 42)
 unsigned[1] numberOfBitsForScaledGroupLengths ;
 alias numberOfBitsUsedForTheScaledGroupLengths=numberOfBitsForScaledGroupLengths;
-
-# Order of spatial differencing
-codetable[1] orderOfSpatialDifferencing ('5.6.table',masterDir,localDir);
-
-# Number of octets required in the Data Section to specify extra descriptors needed for spatial differencing
-# (octets 6-ww in Data Template 7.3)
-unsigned[1] numberOfOctetsExtraDescriptors ;
