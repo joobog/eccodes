@@ -10,268 +10,6 @@
 
 #include "grib_api_internal.h"
 
-#define ONES (~(int)0)
-
-/*#define UNDEFINED 9.999e20*/
-/*#define UNDEFINED_LOW 9.9989e20*/
-/*#define UNDEFINED_HIGH 9.9991e20*/
-#define UNDEFINED 9999.0
-#define UNDEFINED_LOW 9998.9
-#define UNDEFINED_HIGH 9999.1
-#define UNDEFINED_VAL(x) ((x) >= UNDEFINED_LOW && (x) <= UNDEFINED_HIGH)
-#define DEFINED_VAL(x) ((x) < UNDEFINED_LOW || (x) > UNDEFINED_HIGH)
-#define UNDEFINED_ANGLE 999.0
-
-
-static unsigned char* bitstream;
-static int rbits, reg, n_bitstream;
-
-static void init_bitstream(unsigned char* new_bitstream)
-{
-    bitstream   = new_bitstream;
-    n_bitstream = reg = rbits = 0;
-    return;
-}
-
-static void finish_bitstream(void)
-{
-    if (rbits) {
-        n_bitstream++;
-        *bitstream++ = (reg << (8 - rbits)) & 255;
-        rbits        = 0;
-    }
-    return;
-}
-
-
-static void add_many_bitstream(grib_accessor* a, int* t, int n, int n_bits)
-{
-    unsigned int jmask, tt;
-    int i;
-
-    if (n_bits > 25) 
-        grib_context_log(a->context, GRIB_LOG_ERROR, "add_many_bitstream: n_bits = (%d)", n_bits);
-    jmask = (1 << n_bits) - 1;
-
-    for (i = 0; i < n; i++) {
-        tt = (unsigned int)*t++;
-        rbits += n_bits;
-        reg = (reg << n_bits) | (tt & jmask);
-
-        while (rbits >= 8) {
-            rbits -= 8;
-            *bitstream++ = (reg >> rbits) & 255;
-            n_bitstream++;
-        }
-    }
-    return;
-}
-
-
-static void add_bitstream(grib_accessor* a, int t, int n_bits)
-{
-    unsigned int jmask;
-
-    if (n_bits > 16) {
-        add_bitstream(a, t >> 16, n_bits - 16);
-        n_bits = 16;
-    }
-    if (n_bits > 25) 
-        grib_context_log(a->context, GRIB_LOG_ERROR, "add_bitstream: n_bits = (%d)", n_bits);
-    jmask = (1 << n_bits) - 1;
-    rbits += n_bits;
-    reg = (reg << n_bits) | (t & jmask);
-    while (rbits >= 8) {
-        *bitstream++ = (reg >> (rbits = rbits - 8)) & 255;
-        n_bitstream++;
-    }
-    return;
-}
-
-
-/*
- * find min/max of an integer array
- * return 0:  if min max found
- * return 1:  if min max not found, min = max = 0
- */
-static int int_min_max_array(int* data, unsigned int n, int* min, int* max)
-{
-    unsigned int first, i;
-    int mn, mx, min_val, max_val;
-
-    if (n == 0) {
-        return 1;
-    }
-
-    for (first = 0; first < n; first++) {
-        if (data[first] != INT_MAX) {
-            mx = mn = data[first];
-            break;
-        }
-    }
-    if (first >= n) return 1;
-
-    mn = mx = data[first];
-
-#pragma omp parallel private(min_val, max_val)
-    {
-        min_val = max_val = data[first];
-
-#pragma omp for private(i) schedule(static) nowait
-        for (i = first + 1; i < n; i++) {
-            if (data[i] != INT_MAX) {
-                min_val = (min_val > data[i]) ? data[i] : min_val;
-                max_val = (max_val < data[i]) ? data[i] : max_val;
-            }
-        }
-
-#pragma omp critical
-        {
-            if (min_val < mn) mn = min_val;
-            if (max_val > mx) mx = max_val;
-        }
-    }
-
-    *min = mn;
-    *max = mx;
-    return 0;
-}
-
-static double Int_Power(double x, int y)
-{
-    double value;
-
-    if (y < 0) {
-        y = -y;
-        x = 1.0 / x;
-    }
-    value = 1.0;
-
-    while (y) {
-        if (y & 1) {
-            value *= x;
-        }
-        x = x * x;
-        y >>= 1;
-    }
-    return value;
-}
-
-static int min_max_array(double* data, unsigned int n, double* min, double* max)
-{
-    unsigned int first, i;
-    double mn, mx, min_val, max_val;
-
-    if (n == 0) {
-        *min = *max = 0.0;
-        return 1;
-    }
-
-    for (first = 0; first < n; first++) {
-        if (DEFINED_VAL(data[first])) break;
-    }
-    if (first >= n) {
-        *min = *max = 0.0;
-        return 1;
-    }
-
-    mn = mx = data[first];
-
-#pragma omp parallel private(min_val, max_val)
-    {
-        min_val = max_val = data[first];
-
-#pragma omp for private(i) schedule(static) nowait
-        for (i = first + 1; i < n; i++) {
-            if (DEFINED_VAL(data[i])) {
-                min_val = (min_val > data[i]) ? data[i] : min_val;
-                max_val = (max_val < data[i]) ? data[i] : max_val;
-            }
-        }
-
-#pragma omp critical
-        {
-            if (min_val < mn) mn = min_val;
-            if (max_val > mx) mx = max_val;
-        }
-    }
-
-    *min = mn;
-    *max = mx;
-    return 0;
-}
-
-void uint_char(unsigned int i, unsigned char* p)
-{
-    p[0] = (i >> 24) & 255;
-    p[1] = (i >> 16) & 255;
-    p[2] = (i >> 8) & 255;
-    p[3] = (i)&255;
-}
-
-static unsigned char* mk_bms(grib_accessor* a, double* data, unsigned int* ndata)
-{
-    int bms_size;
-    unsigned char *bms, *cbits;
-    unsigned int nn, i, start, c, imask, i0;
-
-    nn = *ndata;
-
-    /* find first grid point with undefined data */
-    for (i = 0; i < nn; i++) {
-        if (UNDEFINED_VAL(data[i])) break;
-    }
-
-    if (i == nn) { /* all defined values, no need for bms */
-        bms = (unsigned char*)malloc(6);
-        if (bms == NULL) 
-            grib_context_log(a->context, GRIB_LOG_ERROR, "mk_bms: memory allocation problem", "");
-        uint_char(6, bms);  // length of section 6
-        bms[4] = 6;         // section 6
-        bms[5] = 255;       // no bitmap
-        return bms;
-    }
-
-    bms_size = 6 + (nn + 7) / 8;
-    bms      = (unsigned char*)malloc(bms_size);
-    if (bms == NULL) 
-        grib_context_log(a->context, GRIB_LOG_ERROR, "mk_bms: memory allocation problem", "");
-
-    uint_char(bms_size, bms);  // length of section 6
-    bms[4] = 6;                // section 6
-    bms[5] = 0;                // has bitmap
-
-    /* bitmap is accessed by bytes, make i0=i/8 bytes of bitmap */
-    cbits = bms + 6;
-    i0    = i >> 3;  // Number of bytes, required to store the bitmap
-    for (i = 0; i < i0; i++) {
-        // Set all bits in the bitmap to 1
-        *cbits++ = 255;
-    }
-
-    /* start processing data, skip i0*8 */
-
-    c     = 0;        // counter: c += imask
-    imask = 128;      // 100.0000
-    i0    = i0 << 3;  // Number of bits in the bitmap
-    start = i0;
-    for (i = i0; i < nn; i++) {
-        if (DEFINED_VAL(data[i])) {
-            c += imask;
-            data[start++] = data[i];
-        }
-        if ((imask >>= 1) == 0) {
-            *cbits++ = c;
-            c        = 0;
-            imask    = 128;
-        }
-    }
-    if (imask != 128) *cbits = c;
-    *ndata = start;
-    return bms;
-}
-
-
 /*
    This is used by make_class.pl
 
@@ -471,6 +209,273 @@ static void init(grib_accessor* a, const long v, grib_arguments* args)
 }
 
 
+#define ONES (~(int)0)
+
+/*#define UNDEFINED 9.999e20*/
+/*#define UNDEFINED_LOW 9.9989e20*/
+/*#define UNDEFINED_HIGH 9.9991e20*/
+#define UNDEFINED 9999.0
+#define UNDEFINED_LOW 9998.9
+#define UNDEFINED_HIGH 9999.1
+#define UNDEFINED_VAL(x) ((x) >= UNDEFINED_LOW && (x) <= UNDEFINED_HIGH)
+#define DEFINED_VAL(x) ((x) < UNDEFINED_LOW || (x) > UNDEFINED_HIGH)
+#define UNDEFINED_ANGLE 999.0
+
+static unsigned char* bitstream;
+static int rbits, reg, n_bitstream;
+
+
+static void init_bitstream(unsigned char* new_bitstream)
+{
+    bitstream   = new_bitstream;
+    n_bitstream = reg = rbits = 0;
+    return;
+}
+
+
+static void finish_bitstream(void)
+{
+    if (rbits) {
+        n_bitstream++;
+        *bitstream++ = (reg << (8 - rbits)) & 255;
+        rbits        = 0;
+    }
+    return;
+}
+
+
+static void add_many_bitstream(grib_accessor* a, int* t, int n, int n_bits)
+{
+    unsigned int jmask, tt;
+    int i;
+
+    if (n_bits > 25) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "add_many_bitstream: n_bits = (%d)", n_bits);
+    jmask = (1 << n_bits) - 1;
+
+    for (i = 0; i < n; i++) {
+        tt = (unsigned int)*t++;
+        rbits += n_bits;
+        reg = (reg << n_bits) | (tt & jmask);
+
+        while (rbits >= 8) {
+            rbits -= 8;
+            *bitstream++ = (reg >> rbits) & 255;
+            n_bitstream++;
+        }
+    }
+    return;
+}
+
+
+static void add_bitstream(grib_accessor* a, int t, int n_bits)
+{
+    unsigned int jmask;
+
+    if (n_bits > 16) {
+        add_bitstream(a, t >> 16, n_bits - 16);
+        n_bits = 16;
+    }
+    if (n_bits > 25) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "add_bitstream: n_bits = (%d)", n_bits);
+    jmask = (1 << n_bits) - 1;
+    rbits += n_bits;
+    reg = (reg << n_bits) | (t & jmask);
+    while (rbits >= 8) {
+        *bitstream++ = (reg >> (rbits = rbits - 8)) & 255;
+        n_bitstream++;
+    }
+    return;
+}
+
+
+/*
+ * find min/max of an integer array
+ * return 0:  if min max found
+ * return 1:  if min max not found, min = max = 0
+ */
+static int int_min_max_array(int* data, unsigned int n, int* min, int* max)
+{
+    unsigned int first, i;
+    int mn, mx, min_val, max_val;
+
+    if (n == 0) {
+        return 1;
+    }
+
+    for (first = 0; first < n; first++) {
+        if (data[first] != INT_MAX) {
+            mx = mn = data[first];
+            break;
+        }
+    }
+    if (first >= n) return 1;
+
+    mn = mx = data[first];
+
+#pragma omp parallel private(min_val, max_val)
+    {
+        min_val = max_val = data[first];
+
+#pragma omp for private(i) schedule(static) nowait
+        for (i = first + 1; i < n; i++) {
+            if (data[i] != INT_MAX) {
+                min_val = (min_val > data[i]) ? data[i] : min_val;
+                max_val = (max_val < data[i]) ? data[i] : max_val;
+            }
+        }
+
+#pragma omp critical
+        {
+            if (min_val < mn) mn = min_val;
+            if (max_val > mx) mx = max_val;
+        }
+    }
+
+    *min = mn;
+    *max = mx;
+    return 0;
+}
+
+
+static double Int_Power(double x, int y)
+{
+    double value;
+
+    if (y < 0) {
+        y = -y;
+        x = 1.0 / x;
+    }
+    value = 1.0;
+
+    while (y) {
+        if (y & 1) {
+            value *= x;
+        }
+        x = x * x;
+        y >>= 1;
+    }
+    return value;
+}
+
+
+static int min_max_array(double* data, unsigned int n, double* min, double* max)
+{
+    unsigned int first, i;
+    double mn, mx, min_val, max_val;
+
+    if (n == 0) {
+        *min = *max = 0.0;
+        return 1;
+    }
+
+    for (first = 0; first < n; first++) {
+        if (DEFINED_VAL(data[first])) break;
+    }
+    if (first >= n) {
+        *min = *max = 0.0;
+        return 1;
+    }
+
+    mn = mx = data[first];
+
+#pragma omp parallel private(min_val, max_val)
+    {
+        min_val = max_val = data[first];
+
+#pragma omp for private(i) schedule(static) nowait
+        for (i = first + 1; i < n; i++) {
+            if (DEFINED_VAL(data[i])) {
+                min_val = (min_val > data[i]) ? data[i] : min_val;
+                max_val = (max_val < data[i]) ? data[i] : max_val;
+            }
+        }
+
+#pragma omp critical
+        {
+            if (min_val < mn) mn = min_val;
+            if (max_val > mx) mx = max_val;
+        }
+    }
+
+    *min = mn;
+    *max = mx;
+    return 0;
+}
+
+
+static void uint_char(unsigned int i, unsigned char* p)
+{
+    p[0] = (i >> 24) & 255;
+    p[1] = (i >> 16) & 255;
+    p[2] = (i >> 8) & 255;
+    p[3] = (i)&255;
+}
+
+
+static unsigned char* mk_bms(grib_accessor* a, double* data, unsigned int* ndata)
+{
+    int bms_size;
+    unsigned char *bms, *cbits;
+    unsigned int nn, i, start, c, imask, i0;
+
+    nn = *ndata;
+
+    /* find first grid point with undefined data */
+    for (i = 0; i < nn; i++) {
+        if (UNDEFINED_VAL(data[i])) break;
+    }
+
+    if (i == nn) { /* all defined values, no need for bms */
+        bms = (unsigned char*)malloc(6);
+        if (bms == NULL) 
+            grib_context_log(a->context, GRIB_LOG_ERROR, "mk_bms: memory allocation problem", "");
+        uint_char(6, bms);  // length of section 6
+        bms[4] = 6;         // section 6
+        bms[5] = 255;       // no bitmap
+        return bms;
+    }
+
+    bms_size = 6 + (nn + 7) / 8;
+    bms      = (unsigned char*)malloc(bms_size);
+    if (bms == NULL) 
+        grib_context_log(a->context, GRIB_LOG_ERROR, "mk_bms: memory allocation problem", "");
+
+    uint_char(bms_size, bms);  // length of section 6
+    bms[4] = 6;                // section 6
+    bms[5] = 0;                // has bitmap
+
+    /* bitmap is accessed by bytes, make i0=i/8 bytes of bitmap */
+    cbits = bms + 6;
+    i0    = i >> 3;  // Number of bytes, required to store the bitmap
+    for (i = 0; i < i0; i++) {
+        // Set all bits in the bitmap to 1
+        *cbits++ = 255;
+    }
+
+    /* start processing data, skip i0*8 */
+
+    c     = 0;        // counter: c += imask
+    imask = 128;      // 100.0000
+    i0    = i0 << 3;  // Number of bits in the bitmap
+    start = i0;
+    for (i = i0; i < nn; i++) {
+        if (DEFINED_VAL(data[i])) {
+            c += imask;
+            data[start++] = data[i];
+        }
+        if ((imask >>= 1) == 0) {
+            *cbits++ = c;
+            c        = 0;
+            imask    = 128;
+        }
+    }
+    if (imask != 128) *cbits = c;
+    *ndata = start;
+    return bms;
+}
+
+
 static int post_process(grib_context* c, long* vals, long len, long order, long bias, const unsigned long extras[2])
 {
     unsigned long last, penultimate, j = 0;
@@ -581,6 +586,7 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
     double missingValue = 0;
 
     err = grib_value_count(a, &n_vals);
+
     if (err)
         return err;
 
@@ -596,7 +602,7 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
         return err;
 
     /* Don't call grib_get_long_internal to suppress error message being output */
-    if ((err = grib_get_long(gh, self->groupSplittingMethodUsed, &groupSplittingMethodUsed)) != GRIB_SUCCESS)
+    if ((err = grib_get_long_internal(gh, self->groupSplittingMethodUsed, &groupSplittingMethodUsed)) != GRIB_SUCCESS)
         return err;
 
     if ((err = grib_get_long_internal(gh, self->missingValueManagementUsed, &missingValueManagementUsed)) != GRIB_SUCCESS)
@@ -626,9 +632,6 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
         return err;
     if ((err = grib_get_double_internal(gh, "missingValue", &missingValue)) != GRIB_SUCCESS)
         return err;
-
-    printf("Order of spatial differencing: %ld\n", orderOfSpatialDifferencing);
-    printf("Number of octets extra descriptors: %ld\n", numberOfOctetsExtraDescriptors);
 
     self->dirty = 0;
 
@@ -779,6 +782,7 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
     return err;
 }
 
+
 static int find_nbits(unsigned int i)
 {
 #if !defined __GNUC__ || __GNUC__ < 4
@@ -811,12 +815,14 @@ static int find_nbits(unsigned int i)
 #endif
 }
 
+
 struct section
 {
     int mn, mx, missing;  // stats
     int i0, i1;           // pointers to data[]
     struct section *head, *tail;
 };
+
 
 static int sizeofsection(struct section* s, int ref_bits, int width_bits, int has_undef)
 {
@@ -836,6 +842,7 @@ static int sizeofsection(struct section* s, int ref_bits, int width_bits, int ha
     return find_nbits(s->mx - s->mn + has_undef) * (s->i1 - s->i0 + 1) + ref_bits + width_bits;
 }
 
+
 static int sizeofsection2(int mn, int mx, int n, int ref_bits, int width_bits,
                           int has_undef_sec, int has_undef)
 {
@@ -846,6 +853,7 @@ static int sizeofsection2(int mn, int mx, int n, int ref_bits, int width_bits,
     }
     return find_nbits(mx - mn + has_undef) * n + ref_bits + width_bits;
 }
+
 
 static int size_all(struct section* s, int ref_bits, int width_bits,
                     int has_undef)
@@ -859,6 +867,7 @@ static int size_all(struct section* s, int ref_bits, int width_bits,
     }
     return (bits + 7) / 8;
 }
+
 
 static void move_one_left(struct section* s, int* v)
 {
@@ -929,6 +938,7 @@ static void move_one_left(struct section* s, int* v)
     }
     return;
 }
+
 
 static void move_one_right(struct section* s, int* v)
 {
@@ -1015,8 +1025,8 @@ static void move_one_right(struct section* s, int* v)
     return;
 }
 
-static void exchange(struct section* s, int* v, int has_undef,
-                     int LEN_SEC_MAX)
+
+static void exchange(struct section* s, int* v, int has_undef, int LEN_SEC_MAX)
 {
     struct section* t;
     int val0, val1, nbit_s, nbit_t;
@@ -1089,8 +1099,8 @@ static void exchange(struct section* s, int* v, int has_undef,
     }
 }
 
-static void merge_j(struct section* h, int ref_bits, int width_bits,
-                    int has_undef, int param, int LEN_SEC_MAX)
+
+static void merge_j(struct section* h, int ref_bits, int width_bits, int has_undef, int param, int LEN_SEC_MAX)
 {
     struct section *t, *m;
     int size_head, size_mid, size_tail, saving_mt, saving_hm;
@@ -1325,7 +1335,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     if ((err = grib_get_long_internal(gh, "bitmapPresent", &bitmap_present)) != GRIB_SUCCESS)
         return err;
 
-    max_bits = 25; // TODO
+    max_bits = bits_per_value; // TODO
     use_scale = 1; // TODO
 
     packing_mode = orderOfSpatialDifferencing;
@@ -1335,19 +1345,6 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     ndata = *len;
     dec_scale = -decimal_scale_factor;
     bin_scale = binary_scale_factor;
-
-    /*printf(*/
-    /*        "Parameters packing_mode %d\n use_bitmap %d\n wanted_bits %d\n data %p\n ndata %zu\n use_scale %d\n dec_scale %d\n bin_scale %d\n",*/
-    /*        packing_mode,*/
-    /*        use_bitmap,*/
-    /*        wanted_bits,*/
-    /*        data,*/
-    /*        ndata,*/
-    /*        use_scale,*/
-    /*        dec_scale,*/
-    /*        bin_scale*/
-    /*    );*/
-
     ndef = 0;
 
     for (i = 0; i < ndata; i++) {
@@ -1355,7 +1352,6 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
             ndef = ndef + 1;
         }
     }
-    printf("N defined values %d\n", ndef);
 
     if (ndef == 0) {  // all undefined values
         if ((err = grib_set_double_internal(gh, self->reference_value, grib_ieee_to_long(0.0))) != GRIB_SUCCESS)
@@ -1572,7 +1568,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
 
 #ifdef DEBUG
-    printf("2: vmx %d vmn %d nbits %d\n", vmx, vmn,
+    grib_context_log(a->context, GRIB_LOG_DEBUG, "COMPLEX: 2: vmx %d vmn %d nbits %d", vmx, vmn,
            find_nbits(vmx - vmn + has_undef));
 #endif
 
@@ -1642,7 +1638,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
                 LEN_SEC_MAX);
 #ifdef DEBUG
         j = size_all(start.tail, vbits, LEN_BITS + est_group_width, has_undef);
-        printf(" complex start %d %d bytes\n", k, j);
+        grib_context_log(a->context, GRIB_LOG_DEBUG, "COMPLEX: complex start %d %d bytes", k, j);
 #endif
         k = 2 * k + 1 + has_undef;
     }
@@ -1658,7 +1654,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     j  = size_all(start.tail, vbits, LEN_BITS + est_group_width, has_undef);
     j0 = j + 1;
 #ifdef DEBUG
-    printf(" complex start inc segments size0 %d segsize %d\n", j, LEN_SEC_MAX);
+    grib_context_log(a->context, GRIB_LOG_DEBUG, "COMPLEX: complex start inc segments size0 %d segsize %d", j, LEN_SEC_MAX);
 #endif
     while (j < j0 && LEN_BITS < 25) {
         j0 = j;
@@ -1669,9 +1665,9 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
                 LEN_SEC_MAX);
         j = size_all(start.tail, vbits, LEN_BITS + est_group_width, has_undef);
 #ifdef DEBUG
-        printf(
-            " complex inc segments size size0 %d size1 %d segsize %d "
-            "LEN_BITS=%d\n",
+     grib_context_log(a->context, GRIB_LOG_DEBUG,
+            "COMPLEX: complex inc segments size size0 %d size1 %d segsize %d "
+            "LEN_BITS=%d",
             j0, j, LEN_SEC_MAX, LEN_BITS);
 #endif
         if (j > j0) {
@@ -1685,14 +1681,14 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     exchange(start.tail, v, has_undef, LEN_SEC_MAX);
 #ifdef DEBUG
     j = size_all(start.tail, vbits, LEN_BITS + est_group_width, has_undef);
-    printf(" exchange  %d bytes\n", j);
+    grib_context_log(a->context, GRIB_LOG_DEBUG, "COMPLEX: exchange  %d bytes", j);
 #endif
 
     merge_j(start.tail, vbits, LEN_BITS + est_group_width, has_undef, vmx,
             LEN_SEC_MAX);
 #ifdef DEBUG
     j = size_all(start.tail, vbits, LEN_BITS + est_group_width, has_undef);
-    printf(" complex start %d %d bytes\n", vmx, j);
+    grib_context_log(a->context, GRIB_LOG_DEBUG, "COMPLEX: complex start %d %d bytes", vmx, j);
 #endif
 
     // finished making segments
@@ -1828,12 +1824,6 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     
     size_sec7 = 5;
 
-    if (packing_mode == 1) {
-        if ((err = grib_set_long_internal(gh, self->orderOfSpatialDifferencing, 0)) != GRIB_SUCCESS)
-            return err;
-        if ((err = grib_set_long_internal(gh, self->numberOfOctetsExtraDescriptors, 0)) != GRIB_SUCCESS)
-            return err;
-    }
     if (packing_mode == 2) {
         size_sec7 += 2 * sec5_48;
         if ((err = grib_set_long_internal(gh, self->orderOfSpatialDifferencing, 1)) != GRIB_SUCCESS)
@@ -1848,8 +1838,6 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
         if ((err = grib_set_long_internal(gh, self->numberOfOctetsExtraDescriptors, 3)) != GRIB_SUCCESS)
             return err;
     }
-
-    /*size_sec7_header = size_sec7;*/
 
     // group reference value
     size_sec7 += (ngroups * sec5_19 + 7) / 8;
@@ -1949,6 +1937,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     return GRIB_SUCCESS;
 }
 
+
 static int unpack_double_element(grib_accessor* a, size_t idx, double* val)
 {
     size_t size    = 0;
@@ -1969,6 +1958,7 @@ static int unpack_double_element(grib_accessor* a, size_t idx, double* val)
     grib_context_free(a->context, values);
     return GRIB_SUCCESS;
 }
+
 
 static int unpack_double_element_set(grib_accessor* a, const size_t* index_array, size_t len, double* val_array)
 {
@@ -1997,6 +1987,7 @@ static int unpack_double_element_set(grib_accessor* a, const size_t* index_array
     grib_context_free(a->context, values);
     return GRIB_SUCCESS;
 }
+
 
 static int value_count(grib_accessor* a, long* count)
 {
