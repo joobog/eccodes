@@ -13,15 +13,15 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #ifndef ECCODES_ON_WINDOWS
-#include <unistd.h>
+ #include <unistd.h>
 #else
-#include <fcntl.h> /* Windows: for _O_BINARY */
+ #include <fcntl.h> /* Windows: for _O_BINARY */
 #endif
 
 #ifdef ENABLE_FLOATING_POINT_EXCEPTIONS
-#define _GNU_SOURCE
-#include <fenv.h>
-int feenableexcept(int excepts);
+ #define _GNU_SOURCE
+ #include <fenv.h>
+ int feenableexcept(int excepts);
 #endif
 
 grib_string_list grib_file_not_found;
@@ -29,11 +29,11 @@ grib_string_list grib_file_not_found;
 /* Windows always has a colon in pathnames e.g. C:\temp\file. So instead we use semi-colons as delimiter */
 /* in order to have multiple definitions/samples directories */
 #ifdef ECCODES_ON_WINDOWS
-#define ECC_PATH_DELIMITER_CHAR ';'
-#define ECC_PATH_DELIMITER_STR ";"
+ #define ECC_PATH_DELIMITER_CHAR ';'
+ #define ECC_PATH_DELIMITER_STR ";"
 #else
-#define ECC_PATH_DELIMITER_CHAR ':'
-#define ECC_PATH_DELIMITER_STR ":"
+ #define ECC_PATH_DELIMITER_CHAR ':'
+ #define ECC_PATH_DELIMITER_STR ":"
 #endif
 
 #if GRIB_PTHREADS
@@ -242,20 +242,22 @@ static void default_print(const grib_context* c, void* descriptor, const char* m
 
 void grib_context_set_print_proc(grib_context* c, grib_print_proc p)
 {
-    c        = c ? c : grib_context_get_default();
-    c->print = p;
+    c = c ? c : grib_context_get_default();
+    /* Set logging back to the default if p is NULL */
+    c->print = (p ? p : &default_print);
 }
 
 void grib_context_set_debug(grib_context* c, int mode)
 {
-    c        = c ? c : grib_context_get_default();
+    c = c ? c : grib_context_get_default();
     c->debug = mode;
 }
 
 void grib_context_set_logging_proc(grib_context* c, grib_log_proc p)
 {
-    c             = c ? c : grib_context_get_default();
-    c->output_log = p;
+    c = c ? c : grib_context_get_default();
+    /* Set logging back to the default if p is NULL */
+    c->output_log = (p ? p : &default_log);
 }
 
 long grib_get_api_version()
@@ -714,7 +716,7 @@ char* grib_context_full_defs_path(grib_context* c, const char* basename)
 
         while (dir) {
             snprintf(full, sizeof(full), "%s/%s", dir->value, basename);
-            if (!codes_access(full, F_OK)) {
+            if (codes_access(full, F_OK) == 0) { /* 0 means file exists */
                 fullpath = (grib_string_list*)grib_context_malloc_clear_persistent(c, sizeof(grib_string_list));
                 Assert(fullpath);
                 fullpath->value = grib_context_strdup(c, full);
@@ -723,6 +725,8 @@ char* grib_context_full_defs_path(grib_context* c, const char* basename)
                 grib_context_log(c, GRIB_LOG_DEBUG, "Found def file %s", full);
                 GRIB_MUTEX_UNLOCK(&mutex_c);
                 return fullpath->value;
+            } else {
+                grib_context_log(c, GRIB_LOG_DEBUG, "Nonexistent def file %s", full);
             }
             dir = dir->next;
         }

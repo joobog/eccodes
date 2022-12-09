@@ -650,7 +650,7 @@ static int check_handle_against_spec(grib_handle* handle, const long edition,
     long angleSubdivisions = 0;
     double angular_precision = 1.0/1000.0; /* millidegree by default */
     double tolerance = 0;
-    
+
     if (edition == 2) {
         return GRIB_SUCCESS;  /* For now only do checks on edition 1 */
     }
@@ -997,6 +997,8 @@ grib_handle* grib_util_set_spec2(grib_handle* h,
         goto cleanup;
     }*/
 
+/* ECC-1269 */
+#if 0
     if (flags & GRIB_UTIL_SET_SPEC_FLAGS_ONLY_PACKING) {
         if (packing_spec->packing == GRIB_UTIL_PACKING_USE_PROVIDED &&
             strcmp(input_packing_type, "grid_simple_matrix")) {
@@ -1143,6 +1145,7 @@ grib_handle* grib_util_set_spec2(grib_handle* h,
 
         return h;
     } /* flags & GRIB_UTIL_SET_SPEC_FLAGS_ONLY_PACKING */
+#endif
 
     grid_type = get_grid_type_name(spec->grid_type);
     if (!grid_type) {
@@ -2075,7 +2078,7 @@ int grib2_is_PDTN_Aerosol(long pdtn)
     /* Notes: PDT 44 is deprecated and replaced by 48 */
     /*        PDT 47 is deprecated and replaced by 85 */
     return (
-        pdtn == 44 || 
+        pdtn == 44 ||
         pdtn == 48 ||
         pdtn == 49 ||
         pdtn == 45 ||

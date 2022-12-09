@@ -58,7 +58,7 @@ static void header         (grib_dumper*,grib_handle*);
 static void footer         (grib_dumper*,grib_handle*);
 
 typedef struct grib_dumper_bufr_encode_python {
-    grib_dumper          dumper;  
+    grib_dumper          dumper;
     /* Members defined in bufr_encode_python */
     long section_offset;
     long empty;
@@ -869,9 +869,9 @@ static void header(grib_dumper* d, grib_handle* h)
         fprintf(self->dumper.out, "#  Using ecCodes version: ");
         grib_print_api_version(self->dumper.out);
         fprintf(self->dumper.out, "\n\n");
-        fprintf(self->dumper.out, "from __future__ import print_function\n");
-        fprintf(self->dumper.out, "import traceback\n");
+        fprintf(self->dumper.out, "from __future__ import print_function\n\n");
         fprintf(self->dumper.out, "import sys\n");
+        fprintf(self->dumper.out, "import traceback\n\n");
         fprintf(self->dumper.out, "from eccodes import *\n\n\n");
         fprintf(self->dumper.out, "def bufr_encode():\n");
     }
