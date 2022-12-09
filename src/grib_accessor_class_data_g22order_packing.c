@@ -1934,6 +1934,11 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     free(widths);
     free(refs);
     free(itmp);
+
+    /* ECC-259: Set correct number of values */
+    if ((err = grib_set_long_internal(gh, self->numberOfValues, *len)) != GRIB_SUCCESS)
+        return err;
+
     return GRIB_SUCCESS;
 }
 
