@@ -26,6 +26,7 @@
    MEMBERS=const char*  reference_value
    MEMBERS=const char*  binary_scale_factor
    MEMBERS=const char*  decimal_scale_factor
+   MEMBERS=const char*  optimize_scale_factor
    MEMBERS=const char*  typeOfOriginalFieldValues
    MEMBERS=const char*  groupSplittingMethodUsed
    MEMBERS=const char*  missingValueManagementUsed
@@ -79,6 +80,7 @@ typedef struct grib_accessor_data_g22order_packing
     const char* reference_value;
     const char* binary_scale_factor;
     const char* decimal_scale_factor;
+    const char* optimize_scale_factor;
     const char* typeOfOriginalFieldValues;
     const char* groupSplittingMethodUsed;
     const char* missingValueManagementUsed;
@@ -189,6 +191,7 @@ static void init(grib_accessor* a, const long v, grib_arguments* args)
     self->reference_value      = grib_arguments_get_name(gh, args, self->carg++);
     self->binary_scale_factor  = grib_arguments_get_name(gh, args, self->carg++);
     self->decimal_scale_factor = grib_arguments_get_name(gh, args, self->carg++);
+    self->optimize_scale_factor = grib_arguments_get_name(gh, args, self->carg++);
 
     self->typeOfOriginalFieldValues                = grib_arguments_get_name(gh, args, self->carg++);
     self->groupSplittingMethodUsed                 = grib_arguments_get_name(gh, args, self->carg++);
@@ -411,7 +414,6 @@ static void uint_char(unsigned int i, unsigned char* p)
     p[2] = (i >> 8) & 255;
     p[3] = (i)&255;
 }
-
 
 static unsigned char* mk_bms(grib_accessor* a, double* data, unsigned int* ndata)
 {
@@ -1222,25 +1224,10 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     unsigned char* buf        = NULL;
     unsigned char* buf_ref    = NULL;
-    unsigned char* buf_width  = NULL;
     unsigned char* buf_length = NULL;
-    unsigned char* buf_vals   = NULL;
 
     double d       = 0;
     double divisor = 0;
-
-    unsigned long* group_val = NULL;
-
-    double max;
-    double min;
-
-    long length_p = 0;
-    long ref_p    = 0;
-    long width_p  = 0;
-    long vals_p   = 0;
-
-    size_t nv       = 0;
-    size_t buf_size = 0;
 
     long bits_per_value = 0;
 
@@ -1248,10 +1235,10 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     long nvals_per_group     = 0;
     long nbits_per_group_val = 0;
-    long group_ref_val       = 0;
 
     long binary_scale_factor;
     long decimal_scale_factor;
+    long optimize_scale_factor;
     long typeOfOriginalFieldValues;
     long groupSplittingMethodUsed;
     long missingValueManagementUsed;
@@ -1260,23 +1247,13 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
     long numberOfGroupsOfDataValues;
     long referenceForGroupWidths;
     long numberOfBitsUsedForTheGroupWidths;
-    long referenceForGroupLengths;
-    long lengthIncrementForTheGroupLengths;
     long trueLengthOfLastGroup;
     long numberOfBitsUsedForTheScaledGroupLengths;
     long orderOfSpatialDifferencing;
     long numberOfOctetsExtraDescriptors;
 
-    long maxgrw;
-    long maxgrl;
-    char packingType[254] = {
-        0,
-    };
-    size_t slen = 254;
-
     double* data;
     size_t ndata = *len;
-    int use_scale;
     int dec_scale;
     int bin_scale;
     int wanted_bits;
@@ -1314,6 +1291,10 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
         return err;
     if ((err = grib_get_long_internal(gh, self->decimal_scale_factor, &decimal_scale_factor)) != GRIB_SUCCESS)
         return err;
+    if ((err = grib_get_long_internal(gh, self->optimize_scale_factor, &optimize_scale_factor)) != GRIB_SUCCESS)
+        return err;
+    optimize_scale_factor = 1; /* TODO: To be reviewed */
+
     if ((err = grib_get_long_internal(gh, self->binary_scale_factor, &binary_scale_factor)) != GRIB_SUCCESS)
         return err;
     if ((err = grib_get_long_internal(gh, self->typeOfOriginalFieldValues, &typeOfOriginalFieldValues)) != GRIB_SUCCESS)
@@ -1336,7 +1317,6 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
         return err;
 
     max_bits = bits_per_value; // TODO
-    use_scale = 1; // TODO
 
     packing_mode = orderOfSpatialDifferencing;
     use_bitmap = bitmap_present;
@@ -1409,7 +1389,7 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     binary_scale = bin_scale;
 
-    if (use_scale == 0) {  // ECMWF style
+    if (optimize_scale_factor == 0) {  // ECMWF style
         ref       = min_val;
         frange    = max_val - ref;
         dec_scale = 0;
