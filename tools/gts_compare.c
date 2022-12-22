@@ -332,8 +332,7 @@ int grib_tool_new_handle_action(grib_runtime_options* options, grib_handle* h)
 
         if (!global_handle || err != GRIB_SUCCESS) {
             morein1++;
-            if (global_handle)
-                grib_handle_delete(global_handle);
+            grib_handle_delete(global_handle);
             return 0;
         }
 
@@ -579,7 +578,7 @@ static int compare_values(grib_runtime_options* options, grib_handle* h1, grib_h
         if (verbose)
             printf(" is set to missing in 1st field\n");
         printInfo(h1);
-        printf("%s is set to missing in 1st field is not missing in 2nd field\n", name);
+        printf("%s is set to missing in 1st field but is not missing in 2nd field\n", name);
         err1 = GRIB_VALUE_MISMATCH;
         save_error(c, name);
         return GRIB_VALUE_MISMATCH;
@@ -589,7 +588,7 @@ static int compare_values(grib_runtime_options* options, grib_handle* h1, grib_h
         if (verbose)
             printf(" is set to missing in 1st field\n");
         printInfo(h1);
-        printf("%s is set to missing in 2nd field is not missing in 1st field\n", name);
+        printf("%s is set to missing in 2nd field but is not missing in 1st field\n", name);
         err1 = GRIB_VALUE_MISMATCH;
         save_error(c, name);
         return GRIB_VALUE_MISMATCH;
