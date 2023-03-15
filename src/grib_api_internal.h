@@ -201,7 +201,7 @@ extern int pthread_mutexattr_settype(pthread_mutexattr_t* attr, int type);
 #endif
 
 /* Return true if two strings are equal */
-#define STR_EQ(a, b) (strcmp((a), (b)) == 0)
+#define STR_EQUAL(a, b) (strcmp((a), (b)) == 0)
 
 #include "grib_api.h"
 
@@ -1270,7 +1270,7 @@ struct grib_int_array
     int* el;
 };
 
-#ifndef NEWDB
+#if 1
 struct grib_fieldset
 {
     grib_context* context;
@@ -1287,7 +1287,7 @@ struct grib_fieldset
 };
 #endif
 
-#ifdef NEWDB
+#if 0
 /* grib db */
 struct grib_db
 {
