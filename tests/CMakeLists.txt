@@ -33,6 +33,7 @@ list(APPEND test_c_bins
     grib_set_force
     grib_ecc-386
     grib_ecc-1431
+    grib_ecc-1472
     bufr_ecc-517
     bufr_ecc-1288
     bufr_get_element
@@ -107,6 +108,7 @@ if( HAVE_BUILD_TOOLS )
         grib_ecc-1322
         grib_ecc-1319
         grib_ecc-1406
+        grib_ecc-1472
         bufr_ecc-1028
         bufr_ecc-1195
         bufr_ecc-1259

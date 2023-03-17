@@ -17,8 +17,8 @@
    CLASS      = accessor
    SUPER      = grib_accessor_class_values
    IMPLEMENTS = init
-   IMPLEMENTS = unpack_double
    IMPLEMENTS = pack_double
+   IMPLEMENTS = unpack_double
    IMPLEMENTS = unpack_double_element;unpack_double_element_set
    IMPLEMENTS = value_count
    MEMBERS=const char*  numberOfValues
@@ -57,7 +57,6 @@ or edit "accessor.class" and rerun ./make_class.pl
 */
 
 static int pack_double(grib_accessor*, const double* val, size_t* len);
-static int unpack_double(grib_accessor*, double* val, size_t* len);
 static int value_count(grib_accessor*, long*);
 static void init(grib_accessor*, const long, grib_arguments*);
 static void init_class(grib_accessor_class*);
@@ -69,78 +68,78 @@ typedef struct grib_accessor_data_g22order_packing
     grib_accessor att;
     /* Members defined in gen */
     /* Members defined in values */
-    int carg;
+    int  carg;
     const char* seclen;
     const char* offsetdata;
     const char* offsetsection;
     int dirty;
     /* Members defined in data_g22order_packing */
-    const char* numberOfValues;
-    const char* bits_per_value;
-    const char* reference_value;
-    const char* binary_scale_factor;
-    const char* decimal_scale_factor;
-    const char* optimize_scale_factor;
-    const char* typeOfOriginalFieldValues;
-    const char* groupSplittingMethodUsed;
-    const char* missingValueManagementUsed;
-    const char* primaryMissingValueSubstitute;
-    const char* secondaryMissingValueSubstitute;
-    const char* numberOfGroupsOfDataValues;
-    const char* referenceForGroupWidths;
-    const char* numberOfBitsUsedForTheGroupWidths;
-    const char* referenceForGroupLengths;
-    const char* lengthIncrementForTheGroupLengths;
-    const char* trueLengthOfLastGroup;
-    const char* numberOfBitsUsedForTheScaledGroupLengths;
-    const char* orderOfSpatialDifferencing;
-    const char* numberOfOctetsExtraDescriptors;
+    const char*  numberOfValues;
+    const char*  bits_per_value;
+    const char*  reference_value;
+    const char*  binary_scale_factor;
+    const char*  decimal_scale_factor;
+    const char*  optimize_scale_factor;
+    const char*  typeOfOriginalFieldValues;
+    const char*  groupSplittingMethodUsed;
+    const char*  missingValueManagementUsed;
+    const char*  primaryMissingValueSubstitute;
+    const char*  secondaryMissingValueSubstitute;
+    const char*  numberOfGroupsOfDataValues;
+    const char*  referenceForGroupWidths;
+    const char*  numberOfBitsUsedForTheGroupWidths;
+    const char*  referenceForGroupLengths;
+    const char*  lengthIncrementForTheGroupLengths;
+    const char*  trueLengthOfLastGroup;
+    const char*  numberOfBitsUsedForTheScaledGroupLengths;
+    const char*  orderOfSpatialDifferencing;
+    const char*  numberOfOctetsExtraDescriptors;
 } grib_accessor_data_g22order_packing;
 
 extern grib_accessor_class* grib_accessor_class_values;
 
 static grib_accessor_class _grib_accessor_class_data_g22order_packing = {
-    &grib_accessor_class_values,                 /* super */
-    "data_g22order_packing",                     /* name */
-    sizeof(grib_accessor_data_g22order_packing), /* size */
-    0,                                           /* inited */
-    &init_class,                                 /* init_class */
-    &init,                                       /* init */
-    0,                                           /* post_init */
-    0,                                           /* free mem */
-    0,                                           /* describes himself */
-    0,                                           /* get length of section */
-    0,                                           /* get length of string */
-    &value_count,                                /* get number of values */
-    0,                                           /* get number of bytes */
-    0,                                           /* get offset to bytes */
-    0,                                           /* get native type */
-    0,                                           /* get sub_section */
-    0,                                           /* grib_pack procedures long */
-    0,                                           /* grib_pack procedures long */
-    0,                                           /* grib_pack procedures long */
-    0,                                           /* grib_unpack procedures long */
-    &pack_double,                                /* grib_pack procedures double */
-    &unpack_double,                              /* grib_unpack procedures double */
-    0,                                           /* grib_pack procedures string */
-    0,                                           /* grib_unpack procedures string */
-    0,                                           /* grib_pack array procedures string */
-    0,                                           /* grib_unpack array procedures string */
-    0,                                           /* grib_pack procedures bytes */
-    0,                                           /* grib_unpack procedures bytes */
-    0,                                           /* pack_expression */
-    0,                                           /* notify_change */
-    0,                                           /* update_size */
-    0,                                           /* preferred_size */
-    0,                                           /* resize */
-    0,                                           /* nearest_smaller_value */
-    0,                                           /* next accessor */
-    0,                                           /* compare vs. another accessor */
-    &unpack_double_element,                      /* unpack only ith value */
-    &unpack_double_element_set,                  /* unpack a given set of elements */
-    0,                                           /* unpack a subarray */
-    0,                                           /* clear */
-    0,                                           /* clone accessor */
+    &grib_accessor_class_values,                      /* super */
+    "data_g22order_packing",                      /* name */
+    sizeof(grib_accessor_data_g22order_packing),  /* size */
+    0,                           /* inited */
+    &init_class,                 /* init_class */
+    &init,                       /* init */
+    0,                  /* post_init */
+    0,                    /* free mem */
+    0,                       /* describes himself */
+    0,                /* get length of section */
+    0,              /* get length of string */
+    &value_count,                /* get number of values */
+    0,                 /* get number of bytes */
+    0,                /* get offset to bytes */
+    0,            /* get native type */
+    0,                /* get sub_section */
+    0,               /* grib_pack procedures long */
+    0,                 /* grib_pack procedures long */
+    0,                  /* grib_pack procedures long */
+    0,                /* grib_unpack procedures long */
+    &pack_double,                /* grib_pack procedures double */
+    0,              /* grib_unpack procedures double */
+    0,                /* grib_pack procedures string */
+    0,              /* grib_unpack procedures string */
+    0,          /* grib_pack array procedures string */
+    0,        /* grib_unpack array procedures string */
+    0,                 /* grib_pack procedures bytes */
+    0,               /* grib_unpack procedures bytes */
+    0,            /* pack_expression */
+    0,              /* notify_change */
+    0,                /* update_size */
+    0,             /* preferred_size */
+    0,                     /* resize */
+    0,      /* nearest_smaller_value */
+    0,                       /* next accessor */
+    0,                    /* compare vs. another accessor */
+    &unpack_double_element,      /* unpack only ith value */
+    &unpack_double_element_set,  /* unpack a given set of elements */
+    0,     /* unpack a subarray */
+    0,                      /* clear */
+    0,                 /* clone accessor */
 };
 
 
@@ -149,34 +148,35 @@ grib_accessor_class* grib_accessor_class_data_g22order_packing = &_grib_accessor
 
 static void init_class(grib_accessor_class* c)
 {
-    c->dump                   = (*(c->super))->dump;
-    c->next_offset            = (*(c->super))->next_offset;
-    c->string_length          = (*(c->super))->string_length;
-    c->byte_count             = (*(c->super))->byte_count;
-    c->byte_offset            = (*(c->super))->byte_offset;
-    c->get_native_type        = (*(c->super))->get_native_type;
-    c->sub_section            = (*(c->super))->sub_section;
-    c->pack_missing           = (*(c->super))->pack_missing;
-    c->is_missing             = (*(c->super))->is_missing;
-    c->pack_long              = (*(c->super))->pack_long;
-    c->unpack_long            = (*(c->super))->unpack_long;
-    c->pack_string            = (*(c->super))->pack_string;
-    c->unpack_string          = (*(c->super))->unpack_string;
-    c->pack_string_array      = (*(c->super))->pack_string_array;
-    c->unpack_string_array    = (*(c->super))->unpack_string_array;
-    c->pack_bytes             = (*(c->super))->pack_bytes;
-    c->unpack_bytes           = (*(c->super))->unpack_bytes;
-    c->pack_expression        = (*(c->super))->pack_expression;
-    c->notify_change          = (*(c->super))->notify_change;
-    c->update_size            = (*(c->super))->update_size;
-    c->preferred_size         = (*(c->super))->preferred_size;
-    c->resize                 = (*(c->super))->resize;
-    c->nearest_smaller_value  = (*(c->super))->nearest_smaller_value;
-    c->next                   = (*(c->super))->next;
-    c->compare                = (*(c->super))->compare;
-    c->unpack_double_subarray = (*(c->super))->unpack_double_subarray;
-    c->clear                  = (*(c->super))->clear;
-    c->make_clone             = (*(c->super))->make_clone;
+    c->dump    =    (*(c->super))->dump;
+    c->next_offset    =    (*(c->super))->next_offset;
+    c->string_length    =    (*(c->super))->string_length;
+    c->byte_count    =    (*(c->super))->byte_count;
+    c->byte_offset    =    (*(c->super))->byte_offset;
+    c->get_native_type    =    (*(c->super))->get_native_type;
+    c->sub_section    =    (*(c->super))->sub_section;
+    c->pack_missing    =    (*(c->super))->pack_missing;
+    c->is_missing    =    (*(c->super))->is_missing;
+    c->pack_long    =    (*(c->super))->pack_long;
+    c->unpack_long    =    (*(c->super))->unpack_long;
+    c->unpack_double    =    (*(c->super))->unpack_double;
+    c->pack_string    =    (*(c->super))->pack_string;
+    c->unpack_string    =    (*(c->super))->unpack_string;
+    c->pack_string_array    =    (*(c->super))->pack_string_array;
+    c->unpack_string_array    =    (*(c->super))->unpack_string_array;
+    c->pack_bytes    =    (*(c->super))->pack_bytes;
+    c->unpack_bytes    =    (*(c->super))->unpack_bytes;
+    c->pack_expression    =    (*(c->super))->pack_expression;
+    c->notify_change    =    (*(c->super))->notify_change;
+    c->update_size    =    (*(c->super))->update_size;
+    c->preferred_size    =    (*(c->super))->preferred_size;
+    c->resize    =    (*(c->super))->resize;
+    c->nearest_smaller_value    =    (*(c->super))->nearest_smaller_value;
+    c->next    =    (*(c->super))->next;
+    c->compare    =    (*(c->super))->compare;
+    c->unpack_double_subarray    =    (*(c->super))->unpack_double_subarray;
+    c->clear    =    (*(c->super))->clear;
+    c->make_clone    =    (*(c->super))->make_clone;
 }
 
 /* END_CLASS_IMP */
@@ -480,7 +480,8 @@ static unsigned char* mk_bms(grib_accessor* a, double* data, unsigned int* ndata
 
 static int post_process(grib_context* c, long* vals, long len, long order, long bias, const unsigned long extras[2])
 {
-    unsigned long last, penultimate, j = 0;
+    unsigned long last, penultimate;
+    long j = 0;
     Assert(order > 0);
     Assert(order <= 3);
     if (!vals)
@@ -536,12 +537,14 @@ static int post_process(grib_context* c, long* vals, long len, long order, long 
 }
 
 
-static int unpack_double(grib_accessor* a, double* val, size_t* len)
+
+template <typename T>
+static int unpack(grib_accessor* a, T* val, size_t* len)
 {
     grib_accessor_data_g22order_packing* self = (grib_accessor_data_g22order_packing*)a;
 
-    size_t i    = 0;
-    size_t j    = 0;
+    long i    = 0;
+    long j    = 0;
     long n_vals = 0;
     long vcount = 0;
     int err     = GRIB_SUCCESS;
@@ -565,8 +568,8 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
     long group_ref_val       = 0;
 
     long bits_per_value    = 0;
-    double binary_s        = 0;
-    double decimal_s       = 0;
+    T binary_s        = 0;
+    T decimal_s       = 0;
     double reference_value = 0;
 
     long binary_scale_factor;
@@ -779,7 +782,7 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
             val[i] = missingValue;
         }
         else {
-            val[i] = (double)((((double)sec_val[i]) * binary_s) + reference_value) * decimal_s;
+            val[i] = ((((T)sec_val[i]) * binary_s) + (T)reference_value) * decimal_s;
         }
     }
 
@@ -787,6 +790,15 @@ static int unpack_double(grib_accessor* a, double* val, size_t* len)
     return err;
 }
 
+static int unpack_double(grib_accessor* a, double* val, size_t* len)
+{
+    return unpack<double>(a, val, len);
+}
+
+static int unpack_float(grib_accessor* a, float* val, size_t* len) 
+{
+    return unpack<float>(a, val, len);
+}
 
 static int find_nbits(unsigned int i)
 {
@@ -1221,36 +1233,36 @@ static int pack_double(grib_accessor* a, const double* val, size_t* len)
 
     /*size_t i      = 0;*/
     /*size_t j      = 0;*/
-    size_t n_vals = *len;
+    //size_t n_vals = *len;
 
     int err = 0;
 
-    unsigned char* buf        = NULL;
-    unsigned char* buf_ref    = NULL;
-    unsigned char* buf_length = NULL;
+    //unsigned char* buf        = NULL;
+    //unsigned char* buf_ref    = NULL;
+    //unsigned char* buf_length = NULL;
 
-    double d       = 0;
-    double divisor = 0;
+    //double d       = 0;
+    //double divisor = 0;
 
     long bits_per_value = 0;
 
-    double reference_value = 0;
+    //double reference_value = 0;
 
-    long nvals_per_group     = 0;
-    long nbits_per_group_val = 0;
+    //long nvals_per_group     = 0;
+    //long nbits_per_group_val = 0;
 
     long binary_scale_factor;
     long decimal_scale_factor;
     long optimize_scale_factor;
     long typeOfOriginalFieldValues;
-    long groupSplittingMethodUsed;
+    //long groupSplittingMethodUsed;
     long missingValueManagementUsed;
     long primaryMissingValueSubstitute;
     long secondaryMissingValueSubstitute;
-    long numberOfGroupsOfDataValues;
-    long referenceForGroupWidths;
+    //long numberOfGroupsOfDataValues;
+    //long referenceForGroupWidths;
     long numberOfBitsUsedForTheGroupWidths;
-    long trueLengthOfLastGroup;
+    //long trueLengthOfLastGroup;
     long numberOfBitsUsedForTheScaledGroupLengths;
     long orderOfSpatialDifferencing;
     long numberOfOctetsExtraDescriptors;
